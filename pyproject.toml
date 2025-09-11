@@ -1,7 +1,10 @@
 [project]
 name = "stanford-mcp"
 version = "0.1.0"
-description = "Add your description here"
+description = "A comprehensive MCP server for querying Stanford's course catalog, including the latest student course ratings."
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "httpx>=0.28.1",
+    "mcp[cli]>=1.14.0",
+]
