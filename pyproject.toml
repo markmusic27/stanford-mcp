@@ -6,7 +6,7 @@ readme = "README.md"
 authors = [{ name = "Mark Music" }]
 
 keywords = ["mcp", "llm", "stanford", "course-catalog", "fetch", "http", "streamable", "stateless"]
-license = { text = "MIT" }
+license = { text = "Apache 2.0" }
 
 requires-python = ">=3.13"
 dependencies = [
@@ -16,4 +16,5 @@ dependencies = [
     "httpx>=0.28.1",
     "mcp[cli]>=1.14.0",
     "starlette>=0.47.3",
+    "uvicorn>=0.32.0",
 ]

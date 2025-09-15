@@ -482,6 +482,7 @@ dependencies = [
     { name = "httpx" },
     { name = "mcp", extra = ["cli"] },
     { name = "starlette" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -492,6 +493,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.14.0" },
     { name = "starlette", specifier = ">=0.47.3" },
+    { name = "uvicorn", specifier = ">=0.32.0" },
 ]
 
 [[package]]
