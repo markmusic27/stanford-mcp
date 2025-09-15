@@ -1,4 +1,4 @@
-from .notification import register_all as register_notification
+from .weather import register_all as register_weather
 
 
 def register_all_tools() -> None:
@@ -6,6 +6,6 @@ def register_all_tools() -> None:
 
     Add additional registrations here as you create new tool modules.
     """
-    register_notification()
+    register_weather()
 
 
