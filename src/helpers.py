@@ -1,4 +1,7 @@
 from tools.registry import list_all_tools
+from typing import Iterable, Any
+
+from explorecourses.classes import Course
 
 def return_tools():
     tools = list_all_tools()
