@@ -1,8 +1,11 @@
+import asyncio
 from typing import Any
 from functools import lru_cache
 from explorecourses import CourseConnection
 import mcp.types as types
-from tools.registry import register_tool 
+
+from tools.registry import register_tool
+# from tools.registry import register_tool 
 
 ACADEMIC_YEAR = "2025-2026"
 
@@ -23,7 +26,6 @@ def get_course_connection() -> CourseConnection:
 def reset_course_connection_cache() -> None:
     """Clear the cached CourseConnection (useful in tests)."""
     get_course_connection.cache_clear()
-
 
 # List schools
 list_schools_spec = types.Tool(
@@ -48,9 +50,27 @@ async def list_schools_handler(arguments: dict[str, Any], ctx: Any) -> list[type
     
     schools = api.get_schools(ACADEMIC_YEAR)
     
-    return [
-        types.TextContent(type="text", text=school.name) for school in schools
-    ]
+    out = "Schools:"
+    
+    for school in schools:
+        deps = school.departments
+        out += f"\n - {school.name}"
+        
+        if include_count:
+            plural = "s" if len(deps) > 1 else ""
+            out += f" ({len(deps)} department{plural})"
+    
+    return [types.TextContent(type="text", text=out)]
     
 def register_all() -> None:
     register_tool(list_schools_spec, list_schools_handler)
+
+# async def test():
+#     res = await list_schools_handler({
+#         "include_department_count": True
+#     }, "")
+    
+#     print(res)
+
+# if __name__ == "__main__":
+#     asyncio.run(test())
