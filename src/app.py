@@ -15,6 +15,7 @@ from tools import register_all_tools
 import mcp.types as types
 
 from tools.registry import dispatch, list_all_tools
+from tools.course_catalog.course_catalog import reset_course_connection_cache
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,7 @@ def main(port: int, log_level: str, debug: bool):
                 yield
             finally:
                 logger.info("Application shutting down...")
+                reset_course_connection_cache()
                 
     # Initialize starlette app
     starlette_app = Starlette(

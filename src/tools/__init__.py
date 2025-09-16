@@ -1,4 +1,4 @@
-from .weather.weather import register_all as register_weather
+from .course_catalog.course_catalog import register_all as register_course_catalog
 
 
 def register_all_tools() -> None:
@@ -6,6 +6,6 @@ def register_all_tools() -> None:
 
     Add additional registrations here as you create new tool modules.
     """
-    register_weather()
+    register_course_catalog()
 
 
