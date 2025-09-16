@@ -5,7 +5,6 @@ from explorecourses import CourseConnection
 import mcp.types as types
 
 from tools.registry import register_tool
-# from tools.registry import register_tool 
 
 ACADEMIC_YEAR = "2025-2026"
 
@@ -46,7 +45,14 @@ list_schools_spec = types.Tool(
 
 async def list_schools_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
     include_count = arguments.get("include_department_count")
+    if include_count is None:
+        raise ValueError("Missing required argument 'include_department_count' (boolean).")
+    if not isinstance(include_count, bool):
+        raise TypeError(
+            f"Invalid type for 'include_department_count': expected boolean, got {type(include_count).__name__}"
+        )
     api = get_course_connection()
+
     
     schools = api.get_schools(ACADEMIC_YEAR)
     
@@ -56,18 +62,64 @@ async def list_schools_handler(arguments: dict[str, Any], ctx: Any) -> list[type
         deps = school.departments
         out += f"\n - {school.name}"
         
-        if include_count:
+        if include_count is True:
             plural = "s" if len(deps) > 1 else ""
             out += f" ({len(deps)} department{plural})"
     
     return [types.TextContent(type="text", text=out)]
+
+list_departments_spec = types.Tool(
+    name="list-departments",
+    title="Departments in a School",
+    description="List departments (name and code) within a given school. If school is omitted, tool returns all departments across schools.",
+    inputSchema={
+        "type": "object",
+        "required": [],
+        "properties": {
+            "school": {
+                "type": "string",
+                "description": "Name of the school (schools can be fetched with list-schools tool). E.g. 'School of Engineering'",
+            },
+        },
+    },
+)
+
+async def list_departments_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
+    school = arguments.get("school", "all")
+    api = get_course_connection()
+    formatted = ""
     
+    schools = api.get_schools(ACADEMIC_YEAR)
+    
+    if school == "all" or school == "":
+        for s in schools:
+            deps = s.departments
+            formatted+=f"\n\n{s.name}"
+            for d in deps:
+                formatted+=f"\n - {d.name} ({d.code})"
+                
+        return [types.TextContent(type="text", text=formatted)]
+    
+    for sch in schools:
+        if (sch.name == school):
+            deps = sch.departments
+            formatted+=f"\n{sch.name}"
+            for d in deps:
+                formatted+=f"\n - {d.name} ({d.code})"
+                
+            return [types.TextContent(type="text", text=formatted)]
+ 
+    
+    raise ValueError(f"Unknown school: {school!r}")
+
 def register_all() -> None:
     register_tool(list_schools_spec, list_schools_handler)
+    register_tool(list_departments_spec, list_departments_handler)
+
 
 # async def test():
-#     res = await list_schools_handler({
-#         "include_department_count": True
+#     res = await list_departments_handler({
+#         "school": "School of Medicine"
 #     }, "")
     
 #     print(res)
