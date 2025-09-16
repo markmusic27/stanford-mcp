@@ -6,6 +6,7 @@ dist/
 wheels/
 *.egg-info
 example.py
+# TODO: REMOVE EXAMPLE.py
 
 # Virtual environments
 .venv
