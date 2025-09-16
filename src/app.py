@@ -10,6 +10,7 @@ from starlette.types import Receive, Scope, Send
 from starlette.routing import Mount
 import uvicorn
 
+from helpers import return_tools
 from tools import register_all_tools
 import mcp.types as types
 
@@ -47,8 +48,12 @@ def main(port: int, log_level: str, debug: bool):
     app = Server("stanford-mcp")
     
     
+    
     # Setup tool registry with app
     register_all_tools()
+    
+    # Log tools
+    logger.info("\n\n" + return_tools() + "\n\n")
     
     @app.list_tools()
     async def list_tools() -> list[types.Tool]:

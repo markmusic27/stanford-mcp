@@ -61,10 +61,10 @@ async def get_alerts(state: str) -> list[str]:
     data = await make_nws_request(url)
     
     if not data or "features" not in data:
-        return ["Unable to fetch alerts or no alerts found."]
+        return "Unable to fetch alerts or no alerts found."
 
     if not data["features"]:
-        return ["No active alerts for this state."]
+        return "No active alerts for this state."
 
     alerts = [format_alert(feature) for feature in data["features"]]
     
@@ -134,32 +134,20 @@ get_forecast_spec = types.Tool(
 # Handlers
 
 async def get_alerts_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
-    state_raw = arguments.get("state")
-
-    if not isinstance(state_raw, str) or len(state_raw.strip()) != 2:
-        return [types.TextContent(type="text", text="Invalid state code. Provide a two-letter US state code.")]
-
-    state = state_raw.strip().upper()
-
+    state = arguments.get("state", "unknown")
+    
     alerts = await get_alerts(state)
-
-    return [types.TextContent(type="text", text=alert) for alert in alerts]
+    
+    return [
+        types.TextContent(type="text", text=alert) for alert in alerts
+    ]
     
 async def get_forecast_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
-    raw_lat = arguments.get("latitude")
-    raw_lon = arguments.get("longitude")
-
-    if raw_lat is None or raw_lon is None:
-        return [types.TextContent(type="text", text="Missing required arguments: latitude and longitude.")]
-
-    try:
-        lat = float(raw_lat)
-        lon = float(raw_lon)
-    except (TypeError, ValueError):
-        return [types.TextContent(type="text", text="Invalid latitude/longitude. They must be numbers.")]
-
-    forecast = await get_forecast(lat, lon)
-
+    lat = arguments.get("latitude", "unknown")
+    long = arguments.get("longitude", "unknown")
+    
+    forecast = await get_forecast(lat, long)
+    
     return [types.TextContent(type="text", text=forecast)]
 
 def register_all() -> None:
