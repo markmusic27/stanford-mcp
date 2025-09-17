@@ -6,7 +6,7 @@ import mcp.types as types
 import explorecourses.filters as filters
 
 from tools.registry import register_tool
-from .formatting import format_course_no_sections, format_course_sections
+from .formatting import format_course_no_sections, format_course_sections, format_course_summary
 from .filtering import build_filters_from_arguments
 from types import SimpleNamespace
 from datetime import datetime
@@ -456,9 +456,15 @@ async def search_courses_handler(arguments: dict[str, Any], ctx: Any) -> list[ty
     fs = build_filters_from_arguments(arguments, term_field="terms", require_terms=True)
 
     api = get_course_connection()
-    courses = api.get_courses_by_query(keyword, *fs, year=ACADEMIC_YEAR)  # IMPLEMENT FROM HERE (MARK)
+    courses = api.get_courses_by_query(keyword, *fs, year=ACADEMIC_YEAR) 
+    
+    out = "Results:"
+    
+    for c in courses:
+        out += "\n\n" + format_course_summary(c)
+        
+    return [types.TextContent(type="text", text=out)]
 
-    raise NotImplementedError("IMPLEMENT FROM HERE (MARK)")
 
 def register_all() -> None:
     register_tool(list_schools_spec, list_schools_handler)

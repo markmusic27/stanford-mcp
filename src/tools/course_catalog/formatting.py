@@ -1,5 +1,7 @@
 from typing import Any, Iterable
 
+from explorecourses import Course
+
 # Formatting utilities and course pretty-printer
 
 IND = "    "  # 4-space indent
@@ -191,4 +193,10 @@ def format_course_sections(course: Any) -> str:
 {fmt_sections(getattr(course, 'sections', ())) }
 """
 
-
+def format_course_summary(course: Course) -> str:
+    desc = course.description
+    if len(desc) > 1000:
+        desc = desc[:997] + "..." + " (description clipped, fetch with get-course tool for full details)"
+    units = str(course.units_max) if course.units_max == course.units_min else f"{course.units_min} - {course.units_max}"
+    header = f"{course.subject + course.code} | id: {course.course_id} | {units} units"
+    return header + f"\n{course.title}" + f"\n\n{desc}\n"
