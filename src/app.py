@@ -6,10 +6,13 @@ from mcp.server.lowlevel import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
+from starlette.responses import RedirectResponse
 from starlette.types import Receive, Scope, Send
-from starlette.routing import Mount
+from starlette.routing import Mount, Route
+from starlette.config import Config
 import uvicorn
 
+from auth import require_bearer_token
 from helpers import return_tools
 from tools import register_all_tools
 import mcp.types as types
@@ -46,9 +49,14 @@ def main(port: int, log_level: str, debug: bool):
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     
+    # Load config from .env
+    config = Config(".env")
+    api_auth_token = config("API_AUTH_TOKEN", cast=str, default=None)
+    api_auth_header = config("API_AUTH_HEADER", cast=str, default="Authorization")
+    if not api_auth_token:
+        raise RuntimeError("API_AUTH_TOKEN is not set. Create an .env with API_AUTH_TOKEN")
+    
     app = Server("stanford-mcp")
-    
-    
     
     # Setup tool registry with app
     register_all_tools()
@@ -77,6 +85,17 @@ def main(port: int, log_level: str, debug: bool):
     async def handle_streamable_http(scope: Scope, receive: Receive, send: Send) -> None:
         await session_manager.handle_request(scope, receive, send)
         
+    # Root redirect to github
+    async def root_redirect(request):
+        return RedirectResponse(url="https://github.com/markmusic27/stanford-mcp", status_code=307)
+    
+    # Wrap MCP handler with Bearer auth
+    protected_http = require_bearer_token(
+        handle_streamable_http, 
+        api_auth_header,
+        api_auth_token
+    )
+        
     @asynccontextmanager
     async def lifespan(app: Starlette) -> AsyncIterator[None]:
         """Context manager for session manager."""
@@ -92,7 +111,8 @@ def main(port: int, log_level: str, debug: bool):
     starlette_app = Starlette(
         debug=debug,
         routes=[
-            Mount("/mcp", app=handle_streamable_http)
+            Route("/", root_redirect),
+            Mount("/mcp", app=protected_http)
         ],
         lifespan=lifespan,
     )
