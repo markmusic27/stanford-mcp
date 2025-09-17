@@ -7,6 +7,7 @@ import explorecourses.filters as filters
 
 from tools.registry import register_tool
 from .formatting import format_course_no_sections, format_course_sections
+from .filtering import build_filters_from_arguments
 from types import SimpleNamespace
 from datetime import datetime
 
@@ -122,11 +123,42 @@ get_course_spec = types.Tool(
     description="Fetch a full course record by course_id, including title, description, GERS, attributes, tags, repeatability, and exam flags. (for section/schedules, use get-schedule tool)",
     inputSchema={
         "type": "object",
-        "required": ["course_id"],
+        "required": ["course_id", "terms"],
         "properties": {
             "course_id": {
                 "type": "number",
                 "description": "Identifier of the course (e.g. 105645, NOT CS 106B). Use search-courses to find valid IDs.",
+            },
+            "terms": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "string"},
+                "description": "List of terms to search in: Autumn | Winter | Spring | Summer (at least one).",
+            },
+            "ug_reqs": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional UG requirements: LANGUAGE, WRITING1, WRITING2, WRITINGSLE, WAY_AII, WAY_AQR, WAY_CE, WAY_ED, WAY_ER, WAY_FR, WAY_SI, WAY_SMA.",
+            },
+            "units": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional units filters: 1, 2, 3, 4, 5, GT5.",
+            },
+            "times": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional time of day: early_morning, morning, lunchtime, afternoon, evening.",
+            },
+            "days": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional meeting days: sunday, monday, tuesday, wednesday, thursday, friday, saturday.",
+            },
+            "careers": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional careers: UG, GR, GSB, LAW, MED.",
             },
         },
     },
@@ -136,8 +168,12 @@ async def get_course_handler(arguments: dict[str, Any], ctx: Any) -> list[types.
     course_id = arguments.get("course_id")
     api = get_course_connection()
     
-    # TODO: ADD FILTER
-    fs = [filters.AUTUMN]
+    # Build filters: keep term behavior defaulting to Autumn if not provided
+    fs = build_filters_from_arguments(
+        {**arguments, "terms": arguments.get("terms") or ["Autumn"]},
+        term_field="terms",
+        require_terms=True,
+    )
     candidates = api.get_courses_by_query(course_id, *fs, year=ACADEMIC_YEAR)
     course = None
     
@@ -361,9 +397,73 @@ async def check_time_conflicts_handler(arguments: dict[str, Any], ctx: Any) -> l
 
     return [types.TextContent(type="text", text="\n".join(out_lines))]
 
+
+
+search_courses_spec = types.Tool(
+    name="search-courses",
+    title="Search Courses",
+    description=(
+        "Search courses by keyword and term filters (Autumn, Winter, Spring, Summer)."
+    ),
+    inputSchema={
+        "type": "object",
+        "required": ["keyword", "terms"],
+        "properties": {
+            "keyword": {
+                "type": "string",
+                "description": "Free-text keyword to search course titles, descriptions, etc.",
+            },
+            "terms": {
+                "type": "array",
+                "minItems": 1,
+                "items": {"type": "string"},
+                "description": "List of terms to search in: Autumn | Winter | Spring | Summer (at least one).",
+            },
+            "ug_reqs": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional UG requirements: LANGUAGE, WRITING1, WRITING2, WRITINGSLE, WAY_AII, WAY_AQR, WAY_CE, WAY_ED, WAY_ER, WAY_FR, WAY_SI, WAY_SMA.",
+            },
+            "units": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional units filters: 1, 2, 3, 4, 5, GT5.",
+            },
+            "times": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional time of day: early_morning, morning, lunchtime, afternoon, evening.",
+            },
+            "days": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional meeting days: sunday, monday, tuesday, wednesday, thursday, friday, saturday.",
+            },
+            "careers": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional careers: UG, GR, GSB, LAW, MED.",
+            },
+        },
+    },
+)
+
+async def search_courses_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
+    keyword = arguments.get("keyword", "")
+    if not isinstance(keyword, str):
+        raise TypeError("'keyword' must be a string.")
+
+    fs = build_filters_from_arguments(arguments, term_field="terms", require_terms=True)
+
+    api = get_course_connection()
+    courses = api.get_courses_by_query(keyword, *fs, year=ACADEMIC_YEAR)  # IMPLEMENT FROM HERE (MARK)
+
+    raise NotImplementedError("IMPLEMENT FROM HERE (MARK)")
+
 def register_all() -> None:
     register_tool(list_schools_spec, list_schools_handler)
     register_tool(list_departments_spec, list_departments_handler)
     register_tool(get_course_spec, get_course_handler)
     register_tool(get_schedule_spec, get_schedule_handler)
     register_tool(check_time_conflicts_spec, check_time_conflicts_handler)
+    register_tool(search_courses_spec, search_courses_handler)
