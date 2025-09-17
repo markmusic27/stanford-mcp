@@ -1,12 +1,13 @@
 from contextlib import asynccontextmanager
 import logging
+import os
 from typing import Any, AsyncIterator
 import click
 from mcp.server.lowlevel import Server
 from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from starlette.applications import Starlette
 from starlette.middleware.cors import CORSMiddleware
-from starlette.responses import RedirectResponse
+from starlette.responses import RedirectResponse, JSONResponse
 from starlette.types import Receive, Scope, Send
 from starlette.routing import Mount, Route
 from starlette.config import Config
@@ -89,6 +90,10 @@ def main(port: int, log_level: str, debug: bool):
     async def root_redirect(request):
         return RedirectResponse(url="https://github.com/markmusic27/stanford-mcp", status_code=307)
     
+    # Simple health check
+    async def healthz(request):
+        return JSONResponse({"status": "ok"})
+    
     # Wrap MCP handler with Bearer auth
     protected_http = require_bearer_token(
         handle_streamable_http, 
@@ -112,6 +117,7 @@ def main(port: int, log_level: str, debug: bool):
         debug=debug,
         routes=[
             Route("/", root_redirect),
+            Route("/healthz", healthz),
             Mount("/mcp", app=protected_http)
         ],
         lifespan=lifespan,
@@ -127,8 +133,8 @@ def main(port: int, log_level: str, debug: bool):
     
     uvicorn.run(
         starlette_app,
-        host="localhost",
-        port=port,
+        host=os.getenv("HOST", "0.0.0.0"),
+        port=int(os.getenv("PORT", port)),
         log_level=log_level.lower(),
         reload=debug,
     )

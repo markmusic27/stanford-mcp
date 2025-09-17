@@ -1,9 +1,5 @@
 # Stanford MCP
 
-Want access? I'll shoot you an API key ASAP. Email me (mmusic@stanford.edu)
+Want access? I'll shoot you an API key ASAP. Email me ([mmusic@stanford.edu](mailto:mmusic@stanford.edu)).
 
-Run `uv run scr` to run with defaults
-
-### Tasks
-- [ ] Add tighter allowed origins in `src/app.py`
-- [ ] Add list of todos (add course ratings, vector db for "magical" similarity / search)
+Run `uv run scr` to run with defaults.
