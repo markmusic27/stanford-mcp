@@ -195,8 +195,8 @@ def format_course_sections(course: Any) -> str:
 
 def format_course_summary(course: Course) -> str:
     desc = course.description
-    if len(desc) > 700:
-        desc = desc[:697] + "..." + " (description clipped, fetch with get-course tool for full details)"
+    if len(desc) > 500:
+        desc = desc[:497] + "..." + " (description clipped, fetch with get-course tool for full details)"
     units = str(course.units_max) if course.units_max == course.units_min else f"{course.units_min} - {course.units_max}"
-    header = f"{course.subject + course.code} | id: {course.course_id} | {units} units"
+    header = f"{course.subject + course.code} | course_id: {course.course_id} | {units} units"
     return header + f"\n{course.title}" + f"\n\n{desc}\n"

@@ -249,169 +249,19 @@ async def get_schedule_handler(arguments: dict[str, Any], ctx: Any) -> list[type
 
 
 
-check_time_conflicts_spec = types.Tool(
-    name="check-time-conflicts",
-    title="Check Section Time Conflicts",
-    description=(
-        "Given a list of {course_id, section_id} pairs, validate IDs and report any day/time overlaps."
-    ),
-    inputSchema={
-        "type": "object",
-        "required": ["selections"],
-        "properties": {
-            "selections": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "required": ["course_id", "section_id"],
-                    "properties": {
-                        "course_id": {"type": "number"},
-                        "section_id": {"type": "number"}
-                    },
-                },
-                "description": "List of pairs to evaluate for conflicts."
-            }
-        }
-    }
-)
-
-def _parse_time_to_minutes(value: str | None) -> int | None:
-    if value is None:
-        return None
-    s = value.strip()
-    if not s:
-        return None
-    # Try several common formats
-    time_formats = [
-        "%I:%M %p", "%I:%M%p", "%I:%M:%S %p", "%H:%M", "%H:%M:%S"
-    ]
-    for fmt in time_formats:
-        try:
-            t = datetime.strptime(s, fmt)
-            return t.hour * 60 + t.minute
-        except Exception:
-            pass
-    return None
-
-def _format_conflict_line(day: str, a: dict, b: dict) -> str:
-    return (
-        f"- {day}: {a['course_id']}[{a['section_id']}] {a['start_str']}–{a['end_str']} "
-        f"conflicts with {b['course_id']}[{b['section_id']}] {b['start_str']}–{b['end_str']}"
-    )
-
-async def check_time_conflicts_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
-    selections = arguments.get("selections")
-    if not isinstance(selections, list) or not selections:
-        raise ValueError("'selections' must be a non-empty array of {course_id, section_id}.")
-
-    api = get_course_connection()
-
-    # Fetch all terms so we can find sections regardless of quarter
-    term_filters = [filters.AUTUMN, filters.WINTER, filters.SPRING, filters.SUMMER]
-
-    # Validate and collect schedules by day
-    day_to_intervals: dict[str, list[dict]] = {}
-    messages: list[str] = []
-
-    for item in selections:
-        if not isinstance(item, dict):
-            raise TypeError("Each selection must be an object with course_id and section_id.")
-        course_id = item.get("course_id")
-        section_id = item.get("section_id")
-        if not isinstance(course_id, (int, float)):
-            raise TypeError("course_id must be a number.")
-        if not isinstance(section_id, (int, float)):
-            raise TypeError("section_id must be a number.")
-
-        candidates = api.get_courses_by_query(course_id, *term_filters, year=ACADEMIC_YEAR)
-        course = None
-        for c in candidates:
-            if c.course_id == course_id:
-                course = c
-                break
-        if course is None:
-            raise ValueError(f"Invalid course_id: {course_id}")
-
-        target_section = None
-        for sec in getattr(course, "sections", ()) or ():
-            if getattr(sec, "class_id", None) == section_id:
-                target_section = sec
-                break
-        if target_section is None:
-            raise ValueError(f"Invalid section_id: {section_id} for course_id {course_id}")
-
-        schedules = getattr(target_section, "schedules", ()) or ()
-        if not schedules:
-            messages.append(f"Note: course {course_id} section {section_id} has no schedules.")
-            continue
-
-        for sched in schedules:
-            start_min = _parse_time_to_minutes(getattr(sched, "start_time", None))
-            end_min = _parse_time_to_minutes(getattr(sched, "end_time", None))
-            start_str = str(getattr(sched, "start_time", None))
-            end_str = str(getattr(sched, "end_time", None))
-            if start_min is None or end_min is None:
-                messages.append(
-                    f"Warning: course {course_id} section {section_id} has unparseable time window {start_str}–{end_str}. Skipping this schedule for conflict checks."
-                )
-                continue
-            days = list(getattr(sched, "days", ()) or ())
-            if not days:
-                messages.append(
-                    f"Warning: course {course_id} section {section_id} schedule has no days. Skipping."
-                )
-                continue
-            for day in days:
-                bucket = day_to_intervals.setdefault(day, [])
-                bucket.append({
-                    "course_id": course_id,
-                    "section_id": section_id,
-                    "start": start_min,
-                    "end": end_min,
-                    "start_str": start_str,
-                    "end_str": end_str,
-                })
-
-    # Detect conflicts
-    conflicts: list[str] = []
-    for day, intervals in day_to_intervals.items():
-        intervals.sort(key=lambda x: (x["start"], x["end"]))
-        prev = None
-        for cur in intervals:
-            if prev is not None:
-                # Overlap if current starts before previous ends
-                if cur["start"] < prev["end"]:
-                    conflicts.append(_format_conflict_line(day, prev, cur))
-            prev = cur
-
-    header = "Time Conflict Check"
-    out_lines = [header]
-    if messages:
-        out_lines.append("\nNotes:")
-        out_lines.extend(f"- {m}" for m in messages)
-    if conflicts:
-        out_lines.append("\nConflicts:")
-        out_lines.extend(conflicts)
-    else:
-        out_lines.append("\nNo conflicts detected.")
-
-    return [types.TextContent(type="text", text="\n".join(out_lines))]
-
-
-
 search_courses_spec = types.Tool(
     name="search-courses",
     title="Search Courses",
     description=(
-        "Search courses by keyword and term filters (Autumn, Winter, Spring, Summer)."
+        "Search courses by query and term filters (Autumn, Winter, Spring, Summer). Returns basic information."
     ),
     inputSchema={
         "type": "object",
-        "required": ["keyword", "terms"],
+        "required": ["query", "terms"],
         "properties": {
-            "keyword": {
+            "query": {
                 "type": "string",
-                "description": "Free-text keyword to search course titles, descriptions, etc.",
+                "description": "Free-text query to search course titles, descriptions, etc.",
             },
             "terms": {
                 "type": "array",
@@ -449,16 +299,16 @@ search_courses_spec = types.Tool(
 )
 
 async def search_courses_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
-    keyword = arguments.get("keyword", "")
-    if not isinstance(keyword, str):
-        raise TypeError("'keyword' must be a string.")
+    query = arguments.get("query", "")
+    if not isinstance(query, str):
+        raise TypeError("'query' must be a string.")
 
     fs = build_filters_from_arguments(arguments, term_field="terms", require_terms=True)
 
     api = get_course_connection()
-    courses = api.get_courses_by_query(keyword, *fs, year=ACADEMIC_YEAR) 
+    courses = api.get_courses_by_query(query, *fs, year=ACADEMIC_YEAR) 
     
-    out = "Results:"
+    out = "Note: search-courses is for exploring and finding courses. It returns only summary fields (name, description, units). To retrieve all details about a course (instructors, schedule, requirements, etc.), use the get-course tool.\n\nResults:"
     
     for c in courses:
         out += "\n\n" + format_course_summary(c)
@@ -471,5 +321,4 @@ def register_all() -> None:
     register_tool(list_departments_spec, list_departments_handler)
     register_tool(get_course_spec, get_course_handler)
     register_tool(get_schedule_spec, get_schedule_handler)
-    register_tool(check_time_conflicts_spec, check_time_conflicts_handler)
     register_tool(search_courses_spec, search_courses_handler)
