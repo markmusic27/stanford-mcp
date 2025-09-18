@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 @click.command()
 @click.option(
     "--port", 
-    default=8000, 
+    default=8080, 
     help="Port to listen on for HTTP"
 )
 @click.option(
