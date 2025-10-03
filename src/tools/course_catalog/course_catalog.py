@@ -119,7 +119,7 @@ async def list_departments_handler(arguments: dict[str, Any], ctx: Any) -> list[
 get_course_spec = types.Tool(
     name="get-course",
     title="Course Details",
-    description="Fetch a full course record by course_id, including title, description, GERS, attributes, tags, repeatability, and exam flags. (for section/schedules, use get-schedule tool)",
+    description="Fetch a full course record by course_id, including title, description, schedule/sections, GERS, attributes, tags, repeatability, and exam flags.",
     inputSchema={
         "type": "object",
         "required": ["course_id", "terms"],
@@ -185,27 +185,6 @@ async def get_course_handler(arguments: dict[str, Any], ctx: Any) -> list[types.
         raise ValueError(f"No matches found with course_id '{course_id}'")
     
     return [types.TextContent(type="text", text=format_course(course))]
-
-get_schedule_spec = types.Tool(
-    name="get-schedule",
-    title="Course Sections and Schedules",
-    description="Fetch sections and schedules for a course by course_id. Optionally filter by term.",
-    inputSchema={
-        "type": "object",
-        "required": ["course_id"],
-        "properties": {
-            "course_id": {
-                "type": "number",
-                "description": "Identifier of the course (e.g. 105645, NOT CS 106B). Use search-courses to find valid IDs.",
-            },
-            "term": {
-                "type": "string",
-                "description": "Optional term to filter sections: Autumn | Winter | Spring | Summer. If omitted/empty, returns all terms.",
-            },
-        },
-    },
-)
-
 
 
 search_courses_spec = types.Tool(
