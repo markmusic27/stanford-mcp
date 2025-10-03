@@ -2,14 +2,13 @@ import asyncio
 from typing import Any
 from functools import lru_cache
 from explorecourses import CourseConnection
+from explorecourses.classes import Course
 import mcp.types as types
 import explorecourses.filters as filters
 
 from tools.registry import register_tool
-from .formatting import format_course_no_sections, format_course_sections, format_course_summary
+from .formatting import format_course, format_course_summary
 from .filtering import build_filters_from_arguments
-from types import SimpleNamespace
-from datetime import datetime
 
 ACADEMIC_YEAR = "2025-2026"
 
@@ -185,7 +184,7 @@ async def get_course_handler(arguments: dict[str, Any], ctx: Any) -> list[types.
     if course == None:
         raise ValueError(f"No matches found with course_id '{course_id}'")
     
-    return [types.TextContent(type="text", text=format_course_no_sections(course))]
+    return [types.TextContent(type="text", text=format_course(course))]
 
 get_schedule_spec = types.Tool(
     name="get-schedule",
@@ -206,46 +205,6 @@ get_schedule_spec = types.Tool(
         },
     },
 )
-
-async def get_schedule_handler(arguments: dict[str, Any], ctx: Any) -> list[types.ContentBlock]:
-    course_id = arguments.get("course_id")
-    api = get_course_connection()
-
-    term_arg = (arguments.get("term") or "").strip().lower()
-    term_to_filter = {
-        "autumn": filters.AUTUMN,
-        "winter": filters.WINTER,
-        "spring": filters.SPRING,
-        "summer": filters.SUMMER,
-    }
-
-    if term_arg == "":
-        fs = [filters.AUTUMN, filters.WINTER, filters.SPRING, filters.SUMMER]
-    else:
-        if term_arg not in term_to_filter:
-            valid = ", ".join(["Autumn", "Winter", "Spring", "Summer"])
-            raise ValueError(f"Invalid term '{arguments.get('term')}'. Valid options: {valid}")
-        fs = [term_to_filter[term_arg]]
-    candidates = api.get_courses_by_query(course_id, *fs, year=ACADEMIC_YEAR)
-    course = None
-    
-    for c in candidates:
-        if (c.course_id == course_id):
-            course = c
-    
-    if course == None:
-        raise ValueError(f"No matches found with course_id '{course_id}'")
-
-    # Optionally filter sections by term label present in the section's term string
-    sections = list(getattr(course, "sections", ()) or ())
-    if term_arg != "":
-        sections = [
-            s for s in sections
-            if (str(getattr(s, "term", "")).lower().find(term_arg) != -1)
-        ]
-
-    ns = SimpleNamespace(sections=sections)
-    return [types.TextContent(type="text", text=format_course_sections(ns))]
 
 
 
@@ -320,5 +279,4 @@ def register_all() -> None:
     register_tool(list_schools_spec, list_schools_handler)
     register_tool(list_departments_spec, list_departments_handler)
     register_tool(get_course_spec, get_course_handler)
-    register_tool(get_schedule_spec, get_schedule_handler)
     register_tool(search_courses_spec, search_courses_handler)
